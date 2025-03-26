@@ -19,8 +19,6 @@ I created two virtual machines:
 
 For the Windows machine, I modified its **Network Security Groups (NSGs)** to make it vulnerable by deleting RDP restrictions and allowing all incoming traffic. I also disabled the **Windows Defender Firewall** to simulate an unprotected system. 
 
-The Linux VM was used to showcase how easily an attacker could target an exposed system by observing authentication logs.
-
 ### **2. Configuring Log Collection**
 #### **Windows Machine:**
 - Enabled **Windows Security Event Auditing** for both successful and failed logins.
@@ -42,12 +40,16 @@ This showed how quickly attackers attempted to log in to an unprotected Linux sy
 - Configured a **Data Collection Rule** to ingest security logs from the Windows VM.
 - Verified log ingestion using KQL queries in **Log Analytics**.
 
+As you can see after only 20 minutes I have around 10,000 failed login attempts from bad actors, this is a good way to show how dangerous it is to have an insecure machine.
+
 ### **4. Visualizing Attack Sources on a World Map**
 To map failed login attempts geographically:
 - Created a **Geo-IP Watchlist** in **Sentinel**.
 - Queried failed login attempts using **KQL** to extract IP addresses.
 - Mapped IPs to geographic locations.
 - Created an **Azure Workbook** using the following **JSON query** to visualize attacks on a heatmap:
+
+To put it simply the objective of this workbook is to take the data from my Log Analytics workspace, and map them onto the world map that is set to be presented as a heat map.
 
 ```json
 {
@@ -85,7 +87,8 @@ To map failed login attempts geographically:
 }
 ```
 
-The resulting **heatmap** displayed attack origins, with major brute-force attempts coming from **Poland, Belgium, and Argentina**.
+As you can see my heatmap was successful and I’m able to see where my attacks have come from with 3 larger brute force attempts from poland, belgium, and argentina
+IN CONCLUSION: this lab gave me a much deeper understanding of Azure, Sentinel , and cloud computing overall. I’m aware conceptually how dangerous it is to have a machine left without a firewall and vulnerable to the internet, but this lab has shown me real world evidence that has proven this much more. I particularly struggled getting familiar with finding AMA(Azure Monitor Agent) as I was unfamiliar with it and log analytics agent was deprecated. 
 
 ## Key Takeaways
 - **Security Risk Awareness**: An unprotected system receives thousands of attack attempts within minutes.
