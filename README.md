@@ -1,55 +1,55 @@
-# SIEM Lab: Mapping Windows Logs in Azure Sentinel
+# SIEM Lab: Mapping Brute Force Attacks Using Azure Sentinel
 
-## Overview
-In this lab, I set up a system to collect logs from both a **Windows 10 virtual machine** and a **Linux virtual machine** visualizing my windows machine in Azure Sentinel, and to display the vulnerabilities of using a linux machine without hardening and securing it. The goal was to gain hands-on experience with SIEM tools, log analysis, and threat detection while building a practical security monitoring solution.
+## Lab Setup Overview
 
-## Lab Setup
-### **Tools & Technologies Used:**
-- **Azure Sentinel** – Cloud-native SIEM for log analysis and security monitoring
-- **Log Analytics Workspace** – Stores and processes log data
-- **Windows Event Logs** – Provides system, security, and application logs
-- **Linux Logs via SSH** – Demonstrates security vulnerabilities on an unprotected Linux machine
-- **GeoIP Data Mapping** – Translates IP addresses into geographic locations
+To start this lab, I created two virtual machines: a Windows 10 machine and a Linux machine. The Linux VM serves to demonstrate how logs can be viewed via SSH and how vulnerable a default Linux installation can be without any hardening measures. I used the Windows machine to expose it to the internet by opening both its cloud firewall (Network Security Groups) and internal firewall. Then, I configured it to forward logs to a Log Analytics Workspace, connected that workspace to Azure Sentinel, and queried failed logon attempts to map their origins geographically.
 
-## Implementation Steps
-### **1. Setting Up Virtual Machines**
-I created two virtual machines:
-- **Windows 10 VM**: Configured to collect security event logs and forward them to Azure Sentinel.
-- **Linux VM**: Used to demonstrate how attackers attempt to access an unsecured system.
+---
 
-For the Windows machine, I modified its **Network Security Groups (NSGs)** to make it vulnerable by deleting RDP restrictions and allowing all incoming traffic. I also disabled the **Windows Defender Firewall** to simulate an unprotected system. 
+## Configuring the Windows Machine
 
-### **2. Configuring Log Collection**
-#### **Windows Machine:**
-- Enabled **Windows Security Event Auditing** for both successful and failed logins.
-- Used **Event Viewer** to verify failed login attempts (Event ID: 4625).
-- Installed the **Azure Monitor Agent (AMA)** to forward logs to a **Log Analytics Workspace** (since the Log Analytics Agent was deprecated).
+- I edited the Network Security Group (NSG) settings for the Windows VM to make it as vulnerable as possible. This included deleting the RDP rule and setting the destination port ranges to "All," effectively allowing all inbound traffic from the internet.
+- After connecting to the VM, I opened **Windows Defender Firewall with Advanced Security** and disabled all firewall profiles.
+- I then enabled **login auditing** for both successful and failed attempts by modifying the security policy settings.
+- With these changes, failed login attempts began appearing in the **Event Viewer** under the **Security logs** with Event ID `4625`.
 
-#### **Linux Machine:**
-The Linux system was not connected to Sentinel but was used to demonstrate how vulnerable it is by default.
-- Accessed logs using SSH: `$ ssh labuser@[linux machine public ip]`
-- Navigated to log directory: `$ cd /var/log/`
-- Inspected authentication logs: `$ cat auth.log`
-- Filtered login attempts using: `$ cat auth.log | grep password`
+---
 
-This showed how quickly attackers attempted to log in to an unprotected Linux system.
+## Configuring the Linux Machine
 
-### **3. Ingesting Logs into Azure Sentinel**
-- Created an **Azure Log Analytics Workspace** and connected it to **Azure Sentinel**.
-- Enabled **Windows Security Events via AMA** within Sentinel's **Content Hub**.
-- Configured a **Data Collection Rule** to ingest security logs from the Windows VM.
-- Verified log ingestion using KQL queries in **Log Analytics**.
+- To verify connectivity, I pinged the Linux VM from my Windows machine.
+- I then SSHed into the Linux VM using:  
+  `ssh labuser@[Linux Public IP Address]`
+- After authentication, I navigated to the logs directory:  
+  `$ cd /var/log/`
+- To view authentication related logs:  
+  `$ cat auth.log`
+- To filter for login related events:  
+  `$ cat auth.log | grep password`
+- From this output, I could see multiple failed connection attempts from unknown sources, as well as my own successful logins from the `labuser` account.
 
-As you can see after only 20 minutes I have around 10,000 failed login attempts from bad actors, this is a good way to show how dangerous it is to have an insecure machine.
+---
 
-### **4. Visualizing Attack Sources on a World Map**
-To map failed login attempts geographically:
-- Created a **Geo-IP Watchlist** in **Sentinel**.
-- Queried failed login attempts using **KQL** to extract IP addresses.
-- Mapped IPs to geographic locations.
-- Created an **Azure Workbook** using the following **JSON query** to visualize attacks on a heatmap:
+## Setting Up Log Collection
 
-To put it simply the objective of this workbook is to take the data from my Log Analytics workspace, and map them onto the world map that is set to be presented as a heat map.
+- I created a **Log Analytics Workspace** within my resource group and connected it to **Azure Sentinel**.
+- I encountered a hurdle here since Azure deprecated the **Log Analytics Agent (MMA)**. To work around this, I used the **Azure Monitor Agent (AMA)** for the first time.
+- I installed the **Windows Security Events connector** via the **Content Hub** in Sentinel and enabled Windows security event collection through AMA.
+- I then created a **Data Collection Rule (DCR)** to link my Windows VM to the Log Analytics Workspace.
+
+---
+
+## Reviewing Security Logs
+
+- With everything configured, I ran additional failed login attempts to generate logs.
+- Checking Log Analytics, I saw thousands of failed login attempts—over 10,000 within just 20 minutes, clearly indicating brute force attacks from bad actors.
+
+---
+
+## Visualizing Attacks on a Map
+
+- I created a **Sentinel Workbook** to visualize where attacks were originating.
+- First, I removed default content in the workbook and added the following custom KQL query using the **Advanced Editor**:
 
 ```json
 {
@@ -87,22 +87,17 @@ To put it simply the objective of this workbook is to take the data from my Log 
 }
 ```
 
-As you can see my heatmap was successful and I’m able to see where my attacks have come from with 3 larger brute force attempts from poland, belgium, and argentina
-IN CONCLUSION: this lab gave me a much deeper understanding of Azure, Sentinel , and cloud computing overall. I’m aware conceptually how dangerous it is to have a machine left without a firewall and vulnerable to the internet, but this lab has shown me real world evidence that has proven this much more. I particularly struggled getting familiar with finding AMA(Azure Monitor Agent) as I was unfamiliar with it and log analytics agent was deprecated. 
-
-## Key Takeaways
-- **Security Risk Awareness**: An unprotected system receives thousands of attack attempts within minutes.
-- **Hands-On Experience**: Worked with Azure Sentinel, Log Analytics, and KQL.
-- **Log Analysis & Visualization**: Mapped real-world attack attempts using GeoIP data.
-
-## Challenges & Solutions
-- **Log Analytics Agent Deprecation**: Solved by switching to **Azure Monitor Agent (AMA)** and configuring Windows Security Events in Sentinel.
-- **Data Collection Rule Setup**: Required learning Sentinel's new data collection process.
-
-## Future Improvements
-- Implement **Automated Incident Response** for detected threats.
-- Set up **Real-Time Alerts** for brute-force attempts.
-- Expand the lab to simulate a **full Security Operations Center (SOC)** workflow.
+- The goal of this query was to project failed logins on a world map, visualized as a heatmap using IP geolocation.  
+- The result was successful — I was able to see concentrated brute-force attempts from **Poland**, **Belgium**, and **Argentina**.
 
 ---
-🚀 This project significantly improved my understanding of **SIEM, cloud security, and log analysis**. Next, I plan to integrate **incident response mechanisms** and further automate security monitoring!
+
+## Conclusion
+
+This lab provided me with hands-on experience in **Azure**, **Sentinel**, and **cloud security**. While I was conceptually aware of the risks of having an unprotected machine exposed to the internet, this exercise gave me real-world evidence of those dangers. I encountered and overcame challenges with the **Azure Monitor Agent**, which deepened my technical knowledge.
+
+---
+
+## Next Steps
+
+My next goal is to expand this project from a **SIEM demonstration** into a full **Security Operations Center (SOC)** setup. This would include creating incident response workflows, setting up automated alerts, and scheduling regular log updates.
